@@ -1,0 +1,19 @@
+# Compiled object files
+*.o
+
+# Compiled libraries
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+
+# Executable files (you might adjust these names as needed)
+*.exe
+*.out
+*.app
+
+# Dependency files
+*.d
+*.dep
+

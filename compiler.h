@@ -13,7 +13,7 @@ enum {
 
 // Struct defining the compile process
 struct compile_process {
-    // Flags for how file shoukd be compiled
+    // Flags for how file should be compiled
     int flags; 
 
     struct compile_process_input_file {

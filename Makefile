@@ -5,8 +5,8 @@ OBJECTS=
 INCLUDES= -I./
 
 
-ALL: ${OBJECTS}
-
-	  # compiles main.c and links it to files in OBJECTS
-   	gcc main.c ${INCLUDES} ${OBJECTS} -g -o ./main
-CLEAN:
+all: ${OBJECTS} # Compiles main.c and links files in OBJECTS list
+	gcc main.c ${INCLUDES} ${OBJECTS} -g -o ./main
+clean:
+	rm ./main
+	rm -rf ${OBJECTS}

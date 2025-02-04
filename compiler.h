@@ -53,12 +53,41 @@ enum {
     COMPILER_FAILED_WITH_ERRORS
 };
 
+struct lex_process;
+
+// Function pointers, allowing abstraction, mimicing something like inheritance present oop languages
+typedef char(*LEX_PROCESS_NEXT_CHAR)(struct lex_process* process);
+typedef char(*LEX_PROCESS_PEEK_CHAR)(struct lex_process* process);
+typedef void(*LEX_PROCESS_PUSH_CHAR)(struct lex_process* process, char c);
+struct lex_process_functions {
+
+    LEX_PROCESS_NEXT_CHAR next_char;
+    LEX_PROCESS_PEEK_CHAR peek_char;
+    LEX_PROCESS_PUSH_CHAR push_char;
+
+};
+
+struct lex_process {
+    struct pos pos;
+    struct vector* token_vec;
+    struct compile_process* compiler;
+
+    // Count of current number of brackets, ex - ((50)) = 2.
+    int current_expression_count;
+    struct buffer* parantheses_buffer;
+    struct lex_process_functions* function;
+
+    // Data that the lexer does not understand, but the user does.
+    void* private;
+};
+
 
 // Struct defining the compile process
 struct compile_process {
     // Flags for how file should be compiled
     int flags; 
 
+    struct pos pos;
     struct compile_process_input_file {
         FILE* fp; // Pointer to file
         const char* abs_path; // Path to file

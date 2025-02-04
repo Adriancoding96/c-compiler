@@ -10,6 +10,10 @@ all: ${OBJECTS} # Compiles main.c and links files in OBJECTS list
 
 ./build/compiler.o: ./compiler.c # Compiles compiler.c
 	gcc ./compiler.c ${INCLUDES} -o ./build/compiler.o -g -c
+
+
+./build/cprocess.o: ./cprocess.c # Compiles cprocess.c
+	gcc ./cprocess.c ${INCLUDES} -o ./build/cprocess.o -g -c
 clean:
 	rm ./main
 	rm -rf ${OBJECTS}

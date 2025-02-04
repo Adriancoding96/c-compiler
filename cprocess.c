@@ -16,7 +16,7 @@ struct compile_process *compile_process_create(const char *filename,
 
     // Creates a output file
     FILE *out_file = NULL;
-    if (filename_out) { //If filename_out is not provided we dont write the compiled file
+    if (!filename_out) { //If filename_out is not provided we dont write the compiled file
         if (!out_file) {
             return NULL;
         }

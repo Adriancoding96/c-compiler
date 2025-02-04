@@ -4,6 +4,23 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+// Token struct for lexical analasys
+struct token {
+    int type;
+    int flags;
+
+    // Value types token can obtain as a union to avoid allocating more memory then needed,
+    // unions share the same space in memory.
+    union { 
+        char cval; // Char value
+        const char* sval; // String value
+        unsigned int inum; // Integer value
+        unsigned long lnum; // Long value
+        unsigned long long llnum; // Long long value
+        void* any; // Void pointer, pointing to any type
+    };
+};
+
 // Enum for compile process result
 enum {
     COMPILER_FILE_COMPILED_OK,

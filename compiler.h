@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 
 // Universal header file for project
 #ifndef COMPILER_H
@@ -19,6 +20,12 @@ struct token {
         unsigned long long llnum; // Long long value
         void* any; // Void pointer, pointing to any type
     };
+
+    // True if whitespace exists between this and next token, false if not.
+    bool whitespace;
+
+    // Pointer to start of buffer that exists between brackets
+    const char* between_brackets;
 };
 
 // Enum for compile process result

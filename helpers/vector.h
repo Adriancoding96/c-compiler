@@ -25,7 +25,7 @@ void vector_init(vector *); // Initiallized vector
 int vector_total(vector *); // Return amount of items in vector
 static void vector_resize(vector *, int); // Function to resize vector
 void vector_add(vector *, void *); // Function to add a new item in the vector
-void vector_set(vector *, int, void *); // Replace existing item in vector
+void vector_set(vector *, int, int index); // Replace existing item in vector
 void *vector_get(vector *, int); // Returns a item from the vector as a void pointer
 void vector_delete(vector *, int); // Delete item from vector
 void vector_free(vector *); // Frees memory allocated for vector

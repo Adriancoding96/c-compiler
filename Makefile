@@ -1,5 +1,5 @@
 # Holds a list of object files for project compilation
-OBJECTS=
+OBJECTS= ./build/compiler.o ./build/cprocess.o
 
 # Holds compiler flags , -I specifying to look in the current directory
 INCLUDES= -I./

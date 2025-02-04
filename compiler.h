@@ -10,6 +10,13 @@ struct token {
     int type;
     int flags;
 
+    // Struct representing position of a token
+    struct pos {
+        int line; // Current line of token
+        int col; // Current column of token
+        const char* filename; // File name of token
+    };
+
     // Value types token can obtain as a union to avoid allocating more memory then needed,
     // unions share the same space in memory.
     union { 

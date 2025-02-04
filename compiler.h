@@ -4,6 +4,13 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+// Enum for compile process result
+enum {
+    COMPILER_FILE_COMPILED_OK,
+    COMPILER_FAILED_WITH_ERRORS
+};
+
+
 // Struct defining the compile process
 struct compile_process {
     // Flags for how file shoukd be compiled
@@ -19,4 +26,8 @@ struct compile_process {
 };
 
 int compile_file(const char* filename, const char* out_filename, int flags);
+
+struct compile_process *compile_process_create(const char *filename,
+                                               const char *filename_out,
+                                               int flags);
 #endif

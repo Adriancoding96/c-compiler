@@ -5,29 +5,37 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+
+// Struct representing position of a token
+struct pos {
+    int line; // Current line of token
+    int col; // Current column of token
+    const char* filename; // File name of token
+};
+
+// Enom for defining result of lexical analysis
+enum {
+    LEXICAL_ANALYSIS_ALL_OK,
+    LEXICAL_ANALYSIS_INOUT_ERROR
+};
+
+
+// Enum defining the diferent kinds of tokens
+enum {
+    TOKEN_TYPE_IDENTIFIER,
+    TOKEN_TYPE_KEYWORD,
+    TOKEN_TYPE_OPERATOR,
+    TOKEN_TYPE_SYMBOL,
+    TOKEN_TYPE_NUMBER,
+    TOKEN_TYPE_STRING,
+    TOKEN_TYPE_COMMENT,
+    TOKEN_TYPE_NEWLINE
+};
+
 // Token struct for lexical analasys
 struct token {
     int type;
     int flags;
-
-    // Struct representing position of a token
-    struct pos {
-        int line; // Current line of token
-        int col; // Current column of token
-        const char* filename; // File name of token
-    };
-
-    // Enum defining the diferent kinds of tokens
-    enum {
-        TOKEN_TYPE_IDENTIFIER,
-        TOKEN_TYPE_KEYWORD,
-        TOKEN_TYPE_OPERATOR,
-        TOKEN_TYPE_SYMBOL,
-        TOKEN_TYPE_NUMBER,
-        TOKEN_TYPE_STRING,
-        TOKEN_TYPE_COMMENT,
-        TOKEN_TYPE_NEWLINE
-    };
 
     // Value types token can obtain as a union to avoid allocating more memory then needed,
     // unions share the same space in memory.
@@ -109,4 +117,15 @@ char compile_process_next_char(struct lex_process* lex_process);
 char compile_process_peek_char(struct lex_process* lex_process);
 
 void compile_process_push_char(struct lex_process* lex_process, char c);
+
+struct lex_process* lex_process_create(struct compile_process* compiler, struct lex_process_functions* functions, void* private);
+
+void lex_process_free(struct lex_process* process);
+
+void* lex_process_private(struct lex_process* process);
+
+struct vector* lex_process_tokens(struct lex_process* process);
+
+int lex(struct lex_process* process);
+
 #endif

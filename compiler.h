@@ -17,6 +17,13 @@ struct token {
         const char* filename; // File name of token
     };
 
+    // Enom for defining result of lexical analysis
+    enum {
+        LEXICAL_ANALYSIS_ALL_OK,
+        LEXICAL_ANALYSIS_INOUT_ERROR
+    };
+
+
     // Enum defining the diferent kinds of tokens
     enum {
         TOKEN_TYPE_IDENTIFIER,
@@ -115,5 +122,7 @@ void lex_proess_free(struct lex_process* process);
 void* lex_rocess_private(struct lex_process* process);
 
 struct vector* lex_process_tokens(struct lex_process* process);
+
+int lex(struct lex_process* process);
 
 #endif

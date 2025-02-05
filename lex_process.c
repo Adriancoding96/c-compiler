@@ -23,7 +23,7 @@ struct lex_process* lex_process_create(struct compile_process* compiler, struct 
 /*
  * Function to free memory allocated to a lex_process
  * */
-void lex_proess_free(struct lex_process* process) {
+void lex_process_free(struct lex_process* process) {
     vector_free(process->token_vec); // Frees token vector
     free(process); // Frees lex process
 }
@@ -31,7 +31,7 @@ void lex_proess_free(struct lex_process* process) {
 /*
  * Gets the private data of the lex process void pointer
  * */
-void* lex_rocess_private(struct lex_process* process) {
+void* lex_process_private(struct lex_process* process) {
     return process->private;
 }
 

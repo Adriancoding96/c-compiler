@@ -34,3 +34,10 @@ void lex_proess_free(struct lex_process* process) {
 void* lex_rocess_private(struct lex_process* process) {
     return process->private;
 }
+
+/*
+ * Returns the token of vector belonging to a lec process
+ * */
+struct vector* lex_process_tokens(struct lex_process* process) {
+    return process->token_vec;
+}

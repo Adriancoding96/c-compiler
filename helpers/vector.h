@@ -11,13 +11,11 @@
 // to reallocate memory again
 #define VECTOR_ELEMENT_INCREMENT 20
 
-enum
-{
+enum {
     VECTOR_FLAG_PEEK_DECREMENT = 0b00000001
 };
 
-struct vector
-{
+struct vector {
     void* data;
     // The pointer index is the index that will be read next upon calling "vector_peek".
     // This index will then be incremented

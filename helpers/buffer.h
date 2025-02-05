@@ -5,8 +5,7 @@
 #include <stddef.h>
 
 #define BUFFER_REALLOC_AMOUNT 2000
-struct buffer
-{
+struct buffer {
     char* data;
     // Read index
     int rindex;

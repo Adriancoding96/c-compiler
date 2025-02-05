@@ -19,6 +19,8 @@ static struct lex_process* lex_process;
 
 static struct token tmp_token;
 
+static struct token* read_next_token(void);
+
 // Uses function pointer to call peek_char function
 static char peekc() {
     return lex_process->function->peek_char(lex_process);
@@ -28,7 +30,7 @@ static char peekc() {
  * Function to read next char from file.
  * */
 static char nextc() {
-    char c = lex_process->function->peek_char(lex_process); // Gets next char from input steam.
+    char c = lex_process->function->next_char(lex_process); // Gets next char from input steam.
     lex_process->pos.col += 1; // Increments column state
     if(c == '\n') { // If char is new line character increments line state, and sets col state to 1
         lex_process->pos.line += 1;
@@ -43,14 +45,36 @@ static void pushc(char c) {
     lex_process->function->push_char(lex_process, c);
 }
 
+// Returns position in file of current lex process
 static struct pos lex_file_position() {
     return lex_process->pos;
 }
 
+/*
+ * Takes a token and copys it on to temp_token
+ * */
 struct token* token_create(struct token* _token) {
     memcpy(&tmp_token, _token, sizeof(struct token));
     tmp_token.pos = lex_file_position();
     return &tmp_token;
+}
+
+/*
+ * Returns the last token that was pushed to lexer
+ * */
+static struct token* lexer_last_token() {
+    return vector_back_or_null(lex_process->token_vec);
+}
+
+
+static struct token* handle_whitespace() {
+    struct token* last_token = lexer_last_token();
+    if(last_token){
+        last_token->whitespace = true;
+    } 
+
+    nextc();
+    return read_next_token();
 }
 
 const char* read_number_str() {
@@ -68,6 +92,10 @@ unsigned long long read_number() {
     return atoll(s); // Converts string to long
 }
 
+
+/*
+ * Creates and returns a new token of long long
+ * */
 struct token* token_name_number_for_value(unsigned long number) {
     return token_create(&(struct token){.type=TOKEN_TYPE_NUMBER,.llnum=number});
 }
@@ -79,12 +107,20 @@ struct token* token_make_number() {
 /*
  * Function creates and return token
  * */
-struct token* read_next_token() {
+struct token *read_next_token() {
     struct token* token = NULL;
     char c = peekc();
     switch(c) {
         NUMERIC_CASE: { // See case difinition in compiler.h
             token = token_make_number();
+            break;
+        }
+        case ' ': { // Ignore spaces
+            token = handle_whitespace();
+            break;
+        }
+        case '\t': { // Ignore tabs
+            token = handle_whitespace();
             break;
         }
         case EOF: {
@@ -110,6 +146,7 @@ int lex(struct lex_process* process) {
     struct token* token = read_next_token(); // Read first token in text stream
     while(token) { // Keep reading next token until no token is present
         vector_push(process->token_vec, token); // Push token on to vector
+        printf("%i\n", token->cval);
         token = read_next_token();
     }
 

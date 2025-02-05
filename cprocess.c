@@ -47,7 +47,7 @@ char compile_process_next_char(struct lex_process* lex_process) {
     // If character is new line symbol increment line counter and set column counter to 0
     if(c == '\n') {
         compiler->pos.line += 1;
-        compiler->pos.col = 0;
+        compiler->pos.col = 1;
     }
 
     return c;

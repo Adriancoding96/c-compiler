@@ -28,7 +28,7 @@ static char peekc() {
  * Function to read next char from file.
  * */
 static char nextc() {
-    char c = lex_process->function->peek_char(lex_process); // Gets next char from input steam.
+    char c = lex_process->function->next_char(lex_process); // Gets next char from input steam.
     lex_process->pos.col += 1; // Increments column state
     if(c == '\n') { // If char is new line character increments line state, and sets col state to 1
         lex_process->pos.line += 1;
@@ -110,6 +110,7 @@ int lex(struct lex_process* process) {
     struct token* token = read_next_token(); // Read first token in text stream
     while(token) { // Keep reading next token until no token is present
         vector_push(process->token_vec, token); // Push token on to vector
+        printf("%i\n", token->cval);
         token = read_next_token();
     }
 

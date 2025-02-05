@@ -13,6 +13,19 @@ struct pos {
     const char* filename; // File name of token
 };
 
+// Defines cases to be inserted to switch statement in lexer.c for numeric tokens
+#define NUMERIC_CASE \
+    case '0':       \
+    case '1':       \
+    case '2':       \
+    case '3':       \
+    case '4':       \
+    case '5':       \
+    case '6':       \
+    case '7':       \
+    case '8':       \
+    case '9'
+
 // Enom for defining result of lexical analysis
 enum {
     LEXICAL_ANALYSIS_ALL_OK,
@@ -36,6 +49,7 @@ enum {
 struct token {
     int type;
     int flags;
+    struct pos pos;
 
     // Value types token can obtain as a union to avoid allocating more memory then needed,
     // unions share the same space in memory.
@@ -127,5 +141,10 @@ void* lex_process_private(struct lex_process* process);
 struct vector* lex_process_tokens(struct lex_process* process);
 
 int lex(struct lex_process* process);
+
+
+void compiler_error(struct compile_process* compiler, const char* msg, ...);
+
+void compiler_warning(struct compile_process* compiler, const char* msg, ...);
 
 #endif

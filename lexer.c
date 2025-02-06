@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "helpers/vector.h"
 #include "helpers/buffer.h"
 
@@ -333,6 +334,37 @@ static struct token* token_make_symbol() {
 }
 
 /*
+ * Function to construct identifier token or a keyword.
+ * */
+static struct token* token_make_identifier_or_keyword() {
+    struct buffer* buf = buffer_create(); // Create new buffer
+    char c = 0; // peekc() not needed here as it is called in macro
+    LEX_GETC_IF(buf, c, (c >= 'a' && c <= 'z') // Use macro to add character if valid ascii value
+            || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9')
+            || c == '_');
+
+    buffer_write(buf, 0x00);
+
+    // Check if keyword
+
+    // Create and return new token of type identifier with string value.
+    return token_create(&(struct token){.type = TOKEN_TYPE_IDENTIFIER, .sval = buffer_ptr(buf)});
+}
+
+/*
+ * Function checks if next character in file stream is a special keyword token.
+ * if true returns a keyword token.
+ * */
+struct token* read_special_token() {
+    char c = peekc();
+    if(isalpha(c) || c == '_') {
+        return token_make_identifier_or_keyword();
+    }
+    return NULL;
+}
+
+/*
  * Function creates and return token
  * */
 struct token *read_next_token() {
@@ -371,8 +403,10 @@ struct token *read_next_token() {
             break; // Reached end of file   
         }
         default: {
-            //printf("DEBUG unexpected token = %i\n", c);
-            compiler_error(lex_process->compiler, "Unexpected token\n");
+            token = read_special_token(); // Creates special token with value such as '_'
+            if(!token) { // If token is null throw compiler error
+                compiler_error(lex_process->compiler, "Unexpected token\n");
+            }
         }
     
     }

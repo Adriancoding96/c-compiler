@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "helpers/vector.h"
 #include "helpers/buffer.h"
 
@@ -172,7 +173,6 @@ static bool is_single_op(char op) {
 bool op_valid(const char* op) {
     return S_EQ(op, "+")
         || S_EQ(op, "*")
-        || S_EQ(op, "/")
         || S_EQ(op, "!")
         || S_EQ(op, "^")
         || S_EQ(op, "+=")
@@ -259,6 +259,20 @@ const char* read_op() {
 }
 
 /*
+ * Function finishes a expression by decremnting the lex process expression count.
+ * Throws compiler error if expression is smaller than 0 meaning we have inserted an
+ * expression closing symbol without a opening one.
+ * */
+static void lex_finish_expression() {
+    lex_process->current_expression_count--;
+    if(lex_process->current_expression_count < 0) { // If this is true we are trying to close a expression
+                                                    // that was never opened, and wee need to throw a compiler error.
+        compiler_error(lex_process->compiler, "You closed an expression that was never opened\n");
+
+    }
+}
+
+/*
  * Function creates a new paranthases buffer for lex_process if a expression
  * such as ( is encounterd.
  * */
@@ -277,13 +291,86 @@ bool lex_is_in_expression() {
     return lex_process->current_expression_count > 0;
 }
 
+/*
+ * Function checks if string equals a keyword
+ * */
+bool is_keyword(const char* str) {
+    return S_EQ(str, "unsigned")
+        || S_EQ(str, "signed")
+        || S_EQ(str, "char")
+        || S_EQ(str, "short")
+        || S_EQ(str, "int")
+        || S_EQ(str, "long")
+        || S_EQ(str, "float")
+        || S_EQ(str, "double")
+        || S_EQ(str, "void")
+        || S_EQ(str, "struct")
+        || S_EQ(str, "union")
+        || S_EQ(str, "static")
+        || S_EQ(str, "__ignore_typecheck")
+        || S_EQ(str, "return")
+        || S_EQ(str, "include")
+        || S_EQ(str, "sizeof")
+        || S_EQ(str, "if")
+        || S_EQ(str, "else")
+        || S_EQ(str, "while")
+        || S_EQ(str, "for")
+        || S_EQ(str, "do")
+        || S_EQ(str, "break")
+        || S_EQ(str, "continue")
+        || S_EQ(str, "switch")
+        || S_EQ(str, "case")
+        || S_EQ(str, "case")
+        || S_EQ(str, "default")
+        || S_EQ(str, "goto")
+        || S_EQ(str, "typedef")
+        || S_EQ(str, "const")
+        || S_EQ(str, "extern")
+        || S_EQ(str, "restrict");
+}
+
+/*
+ * Function constructs a token of type comment from starting character to
+ * either new line or EOF is found. Example // Hello World
+ * */
+struct token* token_make_one_line_comment() {
+    struct buffer* buf = buffer_create(); // Create a new buffer
+    char c = 0; // Set c to 0, c is populated in macro
+    LEX_GETC_IF(buf, c, c != '\n' && c != EOF); // User macro to chech if c is equal to new line or EOF
+    return token_create(&(struct token){.type = TOKEN_TYPE_COMMENT, .sval = buffer_ptr(buf)});
+}
+
+/*
+ * Function handles tokenisation of multiline comments, populates buffer until
+ * end of comment is reached then generates a token pointing to the buffer.
+ * */
+struct token* token_make_multiline_comment() {
+    struct buffer* buf = buffer_create(); // Create new buffer
+    char c = 0; // Initialise char, gets set in macro
+    while(1) {
+        // Check if equals * or EOF
+        LEX_GETC_IF(buf, c, c != '*' && c != EOF);
+        if(c == EOF) {
+            compiler_error(lex_process->compiler, "Multiline comment not properly closed\n");
+        } else if(c == '*') {
+            //Peek after *
+            peekc();
+            if(peekc() == '/') { // End of comment generate comment token
+                nextc();
+                break;
+            }
+        }
+    }
+    // Return and construct a new token of type comment with a string value
+    return token_create(&(struct token){.type = TOKEN_TYPE_COMMENT, .sval = buffer_ptr(buf)});
+}
 
 
 /*
  * Function creates a operator token with the exceptions of #include statements
  * being returned as string tokens instead, or token being a start of a expression.
  * */
-static struct token* token_make_operator_or_string() {
+static struct token *token_make_operator_or_string() {
     char op = peekc();
 
     // Handle #include scenario which uses operator characters
@@ -296,11 +383,92 @@ static struct token* token_make_operator_or_string() {
     }
 
     // Creates and return token of operator type with a string value
-    struct token* token = token_create(&(struct token){.type=TOKEN_TYPE_OPERATOR, .sval = read_op()});
+    struct token* token = token_create(&(struct token){.type = TOKEN_TYPE_OPERATOR, .sval = read_op()});
     if(op == '(') { // Checks if token is start of a expression
         lex_new_expression(); // Turn token type in to expression, increment expression count and create paranthases buffer
     }
     return token;
+}
+
+
+/*
+ * Function peeks at trailing character to see if it is either a single line comment,
+ * multiline comment, and if neither it should be a division operator.
+ * */
+struct token* handle_comment() {
+    char c = peekc();
+    if(c == '/') {
+        nextc();
+        if(peekc() == '/') { // Handle one line comment
+            nextc(); // Pop character of file stream
+            return token_make_one_line_comment();
+        } else if(peekc() == '*') { // Handle multi line comment
+            nextc(); // Pop character of file stream
+            return token_make_multiline_comment();
+        }
+        // If neither of above is true it should be treated as a division operator
+        pushc(c); // Push character back to stream
+        token_make_operator_or_string();
+    }
+    return NULL;
+}
+
+/*
+ * Function creates and returns a new token symbol.
+ * checks if symbol is ')' in that case handles expression count
+ * with lex_finish_expression function.
+ * */
+static struct token* token_make_symbol() {
+     char c = nextc(); // Get next character from file
+     if(c == ')') { // If character is closing expression
+         lex_finish_expression(); 
+     }
+     // Construct and return a new token of type symbol with a character value
+     struct token* token = token_create(&(struct token){.type = TOKEN_TYPE_SYMBOL, .cval = c});
+     return token;
+}
+
+/*
+ * Function to construct identifier token or a keyword.
+ * */
+static struct token* token_make_identifier_or_keyword() {
+    struct buffer* buf = buffer_create(); // Create new buffer
+    char c = 0; // peekc() not needed here as it is called in macro
+    LEX_GETC_IF(buf, c, (c >= 'a' && c <= 'z') // Use macro to add character if valid ascii value
+            || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9')
+            || c == '_');
+
+    buffer_write(buf, 0x00);
+
+    // Check if keyword
+    if(is_keyword(buffer_ptr(buf))) { 
+        // Returns a token with type keyword containing a string value
+        return token_create(&(struct token){.type = TOKEN_TYPE_KEYWORD, .sval = buffer_ptr(buf)});
+    }
+
+    // Create and return new token of type identifier with string value.
+    return token_create(&(struct token){.type = TOKEN_TYPE_IDENTIFIER, .sval = buffer_ptr(buf)});
+}
+
+/*
+ * Function checks if next character in file stream is a special keyword token.
+ * if true returns a keyword token.
+ * */
+struct token* read_special_token() {
+    char c = peekc();
+    if(isalpha(c) || c == '_') {
+        return token_make_identifier_or_keyword();
+    }
+    return NULL;
+}
+
+/*
+ * Function creates and returns a new token of type newline.
+ * */
+struct token* token_make_newline() {
+    nextc();
+    return token_create(&(struct token){.type = TOKEN_TYPE_NEWLINE});
 }
 
 /*
@@ -319,6 +487,10 @@ struct token *read_next_token() {
             token = token_make_operator_or_string();
             break;
         }
+        SYMBOL_CASE: {
+            token_make_symbol();
+            break;
+        }
         case '"': {
             token = token_make_string('"', '"');
             break;
@@ -331,15 +503,18 @@ struct token *read_next_token() {
             token = handle_whitespace();
             break;
         }
-        case '\n': { // Temporary i think nvim is inserting new line characters for some reason
+        case '\n': {
+            token = token_make_newline();
             break;
         }
         case EOF: {
             break; // Reached end of file   
         }
         default: {
-            //printf("DEBUG unexpected token = %i\n", c);
-            compiler_error(lex_process->compiler, "Unexpected token\n");
+            token = read_special_token(); // Creates special token with value such as '_'
+            if(!token) { // If token is null throw compiler error
+                compiler_error(lex_process->compiler, "Unexpected token\n");
+            }
         }
     
     }

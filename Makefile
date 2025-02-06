@@ -1,5 +1,5 @@
 # Holds a list of object files for project compilation
-OBJECTS= ./build/compiler.o ./build/cprocess.o ./build/lexer.o ./build/lex_process.o ./build/vector.o ./build/buffer.o
+OBJECTS= ./build/compiler.o ./build/cprocess.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/vector.o ./build/buffer.o
 
 # Holds compiler flags , -I specifying to look in the current directory
 INCLUDES= -I./
@@ -16,6 +16,9 @@ all: ${OBJECTS} # Compiles main.c and links files in OBJECTS list
 
 ./build/lexer.o: ./lexer.c # Compiles lexer.c
 	gcc ./lexer.c ${INCLUDES} -o ./build/lexer.o -g -c
+
+./build/token.o: ./token.c # Compiles token.c
+	gcc ./token.c ${INCLUDES} -o ./build/token.o -g -c
 
 ./build/lex_process.o: ./lex_process.c # Compiles lex_process.c
 	gcc ./lex_process.c ${INCLUDES} -o ./build/lex_process.o -g -c

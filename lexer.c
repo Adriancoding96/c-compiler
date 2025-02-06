@@ -173,7 +173,6 @@ static bool is_single_op(char op) {
 bool op_valid(const char* op) {
     return S_EQ(op, "+")
         || S_EQ(op, "*")
-        || S_EQ(op, "/")
         || S_EQ(op, "!")
         || S_EQ(op, "^")
         || S_EQ(op, "+=")
@@ -331,10 +330,47 @@ bool is_keyword(const char* str) {
 }
 
 /*
+ * Function constructs a token of type comment from starting character to
+ * either new line or EOF is found. Example // Hello World
+ * */
+struct token* token_make_one_line_comment() {
+    struct buffer* buf = buffer_create(); // Create a new buffer
+    char c = 0; // Set c to 0, c is populated in macro
+    LEX_GETC_IF(buf, c, c != '\n' && c != EOF); // User macro to chech if c is equal to new line or EOF
+    return token_create(&(struct token){.type = TOKEN_TYPE_COMMENT, .sval = buffer_ptr(buf)});
+}
+
+/*
+ * Function handles tokenisation of multiline comments, populates buffer until
+ * end of comment is reached then generates a token pointing to the buffer.
+ * */
+struct token* token_make_multiline_comment() {
+    struct buffer* buf = buffer_create(); // Create new buffer
+    char c = 0; // Initialise char, gets set in macro
+    while(1) {
+        // Check if equals * or EOF
+        LEX_GETC_IF(buf, c, c != '*' && c != EOF);
+        if(c == EOF) {
+            compiler_error(lex_process->compiler, "Multiline comment not properly closed\n");
+        } else if(c == '*') {
+            //Peek after *
+            peekc();
+            if(peekc() == '/') { // End of comment generate comment token
+                nextc();
+                break;
+            }
+        }
+    }
+    // Return and construct a new token of type comment with a string value
+    return token_create(&(struct token){.type = TOKEN_TYPE_COMMENT, .sval = buffer_ptr(buf)});
+}
+
+
+/*
  * Function creates a operator token with the exceptions of #include statements
  * being returned as string tokens instead, or token being a start of a expression.
  * */
-static struct token* token_make_operator_or_string() {
+static struct token *token_make_operator_or_string() {
     char op = peekc();
 
     // Handle #include scenario which uses operator characters
@@ -352,6 +388,29 @@ static struct token* token_make_operator_or_string() {
         lex_new_expression(); // Turn token type in to expression, increment expression count and create paranthases buffer
     }
     return token;
+}
+
+
+/*
+ * Function peeks at trailing character to see if it is either a single line comment,
+ * multiline comment, and if neither it should be a division operator.
+ * */
+struct token* handle_comment() {
+    char c = peekc();
+    if(c == '/') {
+        nextc();
+        if(peekc() == '/') { // Handle one line comment
+            nextc(); // Pop character of file stream
+            return token_make_one_line_comment();
+        } else if(peekc() == '*') { // Handle multi line comment
+            nextc(); // Pop character of file stream
+            return token_make_multiline_comment();
+        }
+        // If neither of above is true it should be treated as a division operator
+        pushc(c); // Push character back to stream
+        token_make_operator_or_string();
+    }
+    return NULL;
 }
 
 /*

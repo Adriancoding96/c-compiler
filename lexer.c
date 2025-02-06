@@ -1,4 +1,5 @@
 #include "compiler.h"
+#include <stdio.h>
 #include <string.h>
 #include "helpers/vector.h"
 #include "helpers/buffer.h"
@@ -16,10 +17,8 @@
 
 
 static struct lex_process* lex_process;
-
 static struct token tmp_token;
-
-static struct token* read_next_token(void);
+static struct token* read_next_token();
 
 // Uses function pointer to call peek_char function
 static char peekc() {
@@ -31,6 +30,7 @@ static char peekc() {
  * */
 static char nextc() {
     char c = lex_process->function->next_char(lex_process); // Gets next char from input steam.
+    //printf("DEBUG nextc, current char = %i\n", c);
     lex_process->pos.col += 1; // Increments column state
     if(c == '\n') { // If char is new line character increments line state, and sets col state to 1
         lex_process->pos.line += 1;
@@ -112,6 +112,7 @@ struct token *read_next_token() {
     char c = peekc();
     switch(c) {
         NUMERIC_CASE: { // See case difinition in compiler.h
+            //printf("DEBUG NUMERIC CASE char = %i\n", c);
             token = token_make_number();
             break;
         }
@@ -123,17 +124,21 @@ struct token *read_next_token() {
             token = handle_whitespace();
             break;
         }
+        case '\n': { // Temporary i think nvim is inserting new line characters for some reason
+            break;
+        }
         case EOF: {
             break; // Reached end of file   
         }
         default: {
+            //printf("DEBUG unexpected token = %i\n", c);
             compiler_error(lex_process->compiler, "Unexpected token\n");
         }
     
     }
 
 
-    return NULL;
+    return token;
 }
 
 int lex(struct lex_process* process) {
@@ -146,7 +151,6 @@ int lex(struct lex_process* process) {
     struct token* token = read_next_token(); // Read first token in text stream
     while(token) { // Keep reading next token until no token is present
         vector_push(process->token_vec, token); // Push token on to vector
-        printf("%i\n", token->cval);
         token = read_next_token();
     }
 

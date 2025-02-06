@@ -105,6 +105,28 @@ struct token* token_make_number() {
 }
 
 /*
+ * Creates a string token, input paramaters start are the ""
+ * encapsulating the string.
+ * */
+static struct token* token_make_string(char start, char end) {
+    struct buffer* buf = buffer_create(); // Create new buffer
+    char c = nextc(); // Initiate first char
+    for(;c  != end && c != EOF; c = nextc()) { // Traverse file intil end char is fuound or EOF
+
+        if(c == '\\') { // Handle escape symbol
+            continue; // Temporary solution
+        }
+    }
+
+    buffer_write(buf, c); // Add character to buffer
+    buffer_write(buf, 0x00); // Add terminator to buffer
+
+    // Create and returns string token with the value equal to the buffer pointer
+    return token_create(&(struct token){.type=TOKEN_TYPE_STRING,.sval=buffer_ptr(buf)});
+}
+
+
+/*
  * Function creates and return token
  * */
 struct token *read_next_token() {

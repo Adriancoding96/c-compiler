@@ -127,6 +127,181 @@ static struct token* token_make_string(char start, char end) {
     return token_create(&(struct token){.type=TOKEN_TYPE_STRING,.sval=buffer_ptr(buf)});
 }
 
+/*
+ * Function checks if operator can only be used once,
+ * for example ?. is not a valid operator, but a combination like <= is valid.
+ * */
+static bool op_treated_as_one(char op) {
+    return op == '(' 
+        || op == '[' 
+        || op == '.' 
+        || op == ',' 
+        || op == '*' 
+        || op == '?';
+}
+
+/*
+ * Function checks if the provided character is a single operator.
+ * example if provided character is not one of theese it is a separate token
+ * and does not need joining.
+ * */
+static bool is_single_op(char op) {
+    return op == '+' 
+        || op == '-' 
+        || op == '/' 
+        || op == '*' 
+        || op == '=' 
+        || op == '>' 
+        || op == '<' 
+        || op == '|' 
+        || op == '&' 
+        || op == '^' 
+        || op == '%' 
+        || op == '!' 
+        || op == '(' 
+        || op == '[' 
+        || op == ',' 
+        || op == '.' 
+        || op == '~' 
+        || op == '?';
+}
+
+/*
+ * Function checks if string contains valid operator
+ * */
+bool op_valid(const char* op) {
+    return S_EQ(op, "+")
+        || S_EQ(op, "*")
+        || S_EQ(op, "/")
+        || S_EQ(op, "!")
+        || S_EQ(op, "^")
+        || S_EQ(op, "+=")
+        || S_EQ(op, "-=")
+        || S_EQ(op, "/=")
+        || S_EQ(op, ">>")
+        || S_EQ(op, "<<")
+        || S_EQ(op, ">=")
+        || S_EQ(op, "<=")
+        || S_EQ(op, ">")
+        || S_EQ(op, "<")
+        || S_EQ(op, "||")
+        || S_EQ(op, "&&")
+        || S_EQ(op, "|")
+        || S_EQ(op, "&")
+        || S_EQ(op, "++")
+        || S_EQ(op, "--")
+        || S_EQ(op, "=")
+        || S_EQ(op, "!=")
+        || S_EQ(op, "==")
+        || S_EQ(op, "->")
+        || S_EQ(op, "(")
+        || S_EQ(op, "[")
+        || S_EQ(op, ",")
+        || S_EQ(op, ".")
+        || S_EQ(op, "...")
+        || S_EQ(op, "~")
+        || S_EQ(op, "?")
+        || S_EQ(op, "%");
+}
+
+/*
+ * Function returns trailing character of invalid operator to input stream.
+ * example *+ is a invalid operator, + will be pushed back leaving only *.
+ * */
+void read_op_flush_back_keep_first(struct buffer* buf) {
+    const char* data =buffer_ptr(buf); // Get string from buffer
+    int n = buf->len; // Get length of buffer
+    for(int i = n - 1; i >= 1; i--) { // Loop backwards through string
+        if(data[i] == 0x00) { // If character is terminator continue
+            continue;
+        }
+        pushc(data[i]); // Push char back to input stream
+
+    }
+}
+
+/*
+ * Function handles reading operators from text file, also handles
+ * vverifying if single or joined operator.
+ * */
+const char* read_op() {
+    bool single_operator = true;
+    char op = nextc(); // Get next char from file
+    struct buffer* buf = buffer_create(); // Create new buffer
+    buffer_write(buf, op); // Write operator to buffer
+
+    if(!op_treated_as_one(op)) { // Check if the next character is a operator that can be joined
+        op = peekc(); // Check what next character in file is
+        if(is_single_op(op)) { // Check if next character is also a operator
+            buffer_write(buf, op);
+            nextc(); // Pop of trailing operator
+            single_operator = false;  // Set single operator flag to false
+        }
+    }
+
+    buffer_write(buf ,0x00); // Write terminator to buffer
+    char* ptr = buffer_ptr(buf);
+
+    // Check if single operator
+    if(!single_operator) {
+
+        if(!op_valid(ptr)) { // Check if operator pair is valid
+            read_op_flush_back_keep_first(buf); // Keep first character for operator tokenisation
+                                             // pass trailing characters back to input stream.
+            ptr[1] = 0x00; // Re insert null terminator as it has been discarded in read_op_back_keep_first function
+        }
+    }
+    else if(!op_valid(ptr)) { // If operator is not valid throw compiler error
+        compiler_error(lex_process->compiler, "The operator &i is not valid\n", ptr);
+    }
+    return ptr;
+
+}
+
+/*
+ * Function creates a new paranthases buffer for lex_process if a expression
+ * such as ( is encounterd.
+ * */
+static void lex_new_expression() {
+    lex_process->current_expression_count++; // Increment expression count of lexer
+    if(lex_process->current_expression_count == 1) { // If expression count is equal to one we need to create a new
+                                                     // paranthases buffer.
+        lex_process->parantheses_buffer = buffer_create();
+    }
+}
+
+/*
+ * Function checks if the lex process is currently inside a expression.
+ * */
+bool lex_is_in_expression() {
+    return lex_process->current_expression_count > 0;
+}
+
+
+
+/*
+ * Function creates a operator token with the exceptions of #include statements
+ * being returned as string tokens instead, or token being a start of a expression.
+ * */
+static struct token* token_make_operator_or_string() {
+    char op = peekc();
+
+    // Handle #include scenario which uses operator characters
+    // making sure they get parsed as a string.
+    if(op == '<') {
+        struct token* last_token = lexer_last_token();
+        if(token_is_keyword(last_token, "include")) {
+            return token_make_string('<', '>');
+        }
+    }
+
+    // Creates and return token of operator type with a string value
+    struct token* token = token_create(&(struct token){.type=TOKEN_TYPE_OPERATOR, .sval = read_op()});
+    if(op == '(') { // Checks if token is start of a expression
+        lex_new_expression(); // Turn token type in to expression, increment expression count and create paranthases buffer
+    }
+    return token;
+}
 
 /*
  * Function creates and return token
@@ -138,6 +313,10 @@ struct token *read_next_token() {
         NUMERIC_CASE: { // See case difinition in compiler.h
             //printf("DEBUG NUMERIC CASE char = %i\n", c);
             token = token_make_number();
+            break;
+        }
+        OPERATOR_CASE_EXCLUDING_DIVISION: {
+            token = token_make_operator_or_string();
             break;
         }
         case '"': {

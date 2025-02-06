@@ -1,4 +1,5 @@
 #include "compiler.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include "helpers/vector.h"
@@ -110,6 +111,7 @@ struct token* token_make_number() {
  * */
 static struct token* token_make_string(char start, char end) {
     struct buffer* buf = buffer_create(); // Create new buffer
+    assert(nextc() == start); // Make sure start character is " else assert will exit compile process
     char c = nextc(); // Initiate first char
     for(;c  != end && c != EOF; c = nextc()) { // Traverse file intil end char is fuound or EOF
 
@@ -136,6 +138,10 @@ struct token *read_next_token() {
         NUMERIC_CASE: { // See case difinition in compiler.h
             //printf("DEBUG NUMERIC CASE char = %i\n", c);
             token = token_make_number();
+            break;
+        }
+        case '"': {
+            token = token_make_string('"', '"');
             break;
         }
         case ' ': { // Ignore spaces

@@ -1,4 +1,6 @@
 #include "compiler.h"
+#include <assert.h>
+#include <stdio.h>
 #include <string.h>
 #include "helpers/vector.h"
 #include "helpers/buffer.h"
@@ -16,10 +18,8 @@
 
 
 static struct lex_process* lex_process;
-
 static struct token tmp_token;
-
-static struct token* read_next_token(void);
+static struct token* read_next_token();
 
 // Uses function pointer to call peek_char function
 static char peekc() {
@@ -31,6 +31,7 @@ static char peekc() {
  * */
 static char nextc() {
     char c = lex_process->function->next_char(lex_process); // Gets next char from input steam.
+    //printf("DEBUG nextc, current char = %i\n", c);
     lex_process->pos.col += 1; // Increments column state
     if(c == '\n') { // If char is new line character increments line state, and sets col state to 1
         lex_process->pos.line += 1;
@@ -105,6 +106,29 @@ struct token* token_make_number() {
 }
 
 /*
+ * Creates a string token, input paramaters start are the ""
+ * encapsulating the string.
+ * */
+static struct token* token_make_string(char start, char end) {
+    struct buffer* buf = buffer_create(); // Create new buffer
+    assert(nextc() == start); // Make sure start character is " else assert will exit compile process
+    char c = nextc(); // Initiate first char
+    for(;c  != end && c != EOF; c = nextc()) { // Traverse file intil end char is fuound or EOF
+
+        if(c == '\\') { // Handle escape symbol
+            continue; // Temporary solution
+        }
+    }
+
+    buffer_write(buf, c); // Add character to buffer
+    buffer_write(buf, 0x00); // Add terminator to buffer
+
+    // Create and returns string token with the value equal to the buffer pointer
+    return token_create(&(struct token){.type=TOKEN_TYPE_STRING,.sval=buffer_ptr(buf)});
+}
+
+
+/*
  * Function creates and return token
  * */
 struct token *read_next_token() {
@@ -112,7 +136,12 @@ struct token *read_next_token() {
     char c = peekc();
     switch(c) {
         NUMERIC_CASE: { // See case difinition in compiler.h
+            //printf("DEBUG NUMERIC CASE char = %i\n", c);
             token = token_make_number();
+            break;
+        }
+        case '"': {
+            token = token_make_string('"', '"');
             break;
         }
         case ' ': { // Ignore spaces
@@ -123,17 +152,21 @@ struct token *read_next_token() {
             token = handle_whitespace();
             break;
         }
+        case '\n': { // Temporary i think nvim is inserting new line characters for some reason
+            break;
+        }
         case EOF: {
             break; // Reached end of file   
         }
         default: {
+            //printf("DEBUG unexpected token = %i\n", c);
             compiler_error(lex_process->compiler, "Unexpected token\n");
         }
     
     }
 
 
-    return NULL;
+    return token;
 }
 
 int lex(struct lex_process* process) {
@@ -146,7 +179,6 @@ int lex(struct lex_process* process) {
     struct token* token = read_next_token(); // Read first token in text stream
     while(token) { // Keep reading next token until no token is present
         vector_push(process->token_vec, token); // Push token on to vector
-        printf("%i\n", token->cval);
         token = read_next_token();
     }
 

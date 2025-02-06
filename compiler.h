@@ -1,10 +1,17 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 // Universal header file for project
 #ifndef COMPILER_H
 #define COMPILER_H
 
+
+// Defines a macro for string comparison and null checking
+#define S_EQ(str1, str2) \
+    (str1 && str1 && (strcmp(str1, str2) == 0))  // Checks that neither input string is null
+                                                 // and that the input string values are equal
+     
 
 // Struct representing position of a token
 struct pos {
@@ -25,6 +32,27 @@ struct pos {
     case '7':       \
     case '8':       \
     case '9'
+
+// Defines cases for operators to be inserted in to lexer switch statement
+#define OPERATOR_CASE_EXCLUDING_DIVISION \
+    case '+':                            \
+    case '-':                            \
+    case '*':                            \
+    case '>':                            \
+    case '<':                            \
+    case '^':                            \
+    case '%':                            \
+    case '!':                            \
+    case '=':                            \
+    case '~':                            \
+    case '|':                            \
+    case '&':                            \
+    case '(':                            \
+    case '[':                            \
+    case ',':                            \
+    case '.':                            \
+    case '?'                            
+
 
 // Enom for defining result of lexical analysis
 enum {
@@ -127,24 +155,15 @@ struct compile_process *compile_process_create(const char *filename,
 
 // Function prototypes for default lexer function implementations
 char compile_process_next_char(struct lex_process* lex_process); 
-
 char compile_process_peek_char(struct lex_process* lex_process);
-
 void compile_process_push_char(struct lex_process* lex_process, char c);
-
 struct lex_process* lex_process_create(struct compile_process* compiler, struct lex_process_functions* functions, void* private);
-
 void lex_process_free(struct lex_process* process);
-
 void* lex_process_private(struct lex_process* process);
-
 struct vector* lex_process_tokens(struct lex_process* process);
-
 int lex(struct lex_process* process);
-
-
 void compiler_error(struct compile_process* compiler, const char* msg, ...);
-
 void compiler_warning(struct compile_process* compiler, const char* msg, ...);
+bool token_is_keyword(struct token* token, const char* value);
 
 #endif

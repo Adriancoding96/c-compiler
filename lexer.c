@@ -259,6 +259,20 @@ const char* read_op() {
 }
 
 /*
+ * Function finishes a expression by decremnting the lex process expression count.
+ * Throws compiler error if expression is smaller than 0 meaning we have inserted an
+ * expression closing symbol without a opening one.
+ * */
+static void lex_finish_expression() {
+    lex_process->current_expression_count--;
+    if(lex_process->current_expression_count < 0) { // If this is true we are trying to close a expression
+                                                    // that was never opened, and wee need to throw a compiler error.
+        compiler_error(lex_process->compiler, "You closed an expression that was never opened\n");
+
+    }
+}
+
+/*
  * Function creates a new paranthases buffer for lex_process if a expression
  * such as ( is encounterd.
  * */
@@ -296,11 +310,26 @@ static struct token* token_make_operator_or_string() {
     }
 
     // Creates and return token of operator type with a string value
-    struct token* token = token_create(&(struct token){.type=TOKEN_TYPE_OPERATOR, .sval = read_op()});
+    struct token* token = token_create(&(struct token){.type = TOKEN_TYPE_OPERATOR, .sval = read_op()});
     if(op == '(') { // Checks if token is start of a expression
         lex_new_expression(); // Turn token type in to expression, increment expression count and create paranthases buffer
     }
     return token;
+}
+
+/*
+ * Function creates and returns a new token symbol.
+ * checks if symbol is ')' in that case handles expression count
+ * with lex_finish_expression function.
+ * */
+static struct token* token_make_symbol() {
+     char c = nextc(); // Get next character from file
+     if(c == ')') { // If character is closing expression
+         lex_finish_expression(); 
+     }
+     // Construct and return a new token of type symbol with a character value
+     struct token* token = token_create(&(struct token){.type = TOKEN_TYPE_SYMBOL, .cval = c});
+     return token;
 }
 
 /*
@@ -317,6 +346,10 @@ struct token *read_next_token() {
         }
         OPERATOR_CASE_EXCLUDING_DIVISION: {
             token = token_make_operator_or_string();
+            break;
+        }
+        SYMBOL_CASE: {
+            token_make_symbol();
             break;
         }
         case '"': {

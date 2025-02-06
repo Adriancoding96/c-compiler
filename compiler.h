@@ -54,6 +54,17 @@ struct pos {
     case '?'                            
 
 
+// Defines symbols to be use by lexer to generate tokens
+#define SYMBOL_CASE \
+    case '{':       \
+    case '}':       \
+    case ':':       \
+    case ';':       \
+    case '#':       \
+    case '\\':       \
+    case ')':       \
+    case ']'
+
 // Enom for defining result of lexical analysis
 enum {
     LEXICAL_ANALYSIS_ALL_OK,

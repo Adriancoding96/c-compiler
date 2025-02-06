@@ -405,6 +405,14 @@ struct token* read_special_token() {
 }
 
 /*
+ * Function creates and returns a new token of type newline.
+ * */
+struct token* token_make_newline() {
+    nextc();
+    return token_create(&(struct token){.type = TOKEN_TYPE_NEWLINE});
+}
+
+/*
  * Function creates and return token
  * */
 struct token *read_next_token() {
@@ -436,7 +444,8 @@ struct token *read_next_token() {
             token = handle_whitespace();
             break;
         }
-        case '\n': { // Temporary i think nvim is inserting new line characters for some reason
+        case '\n': {
+            token = token_make_newline();
             break;
         }
         case EOF: {

@@ -47,6 +47,16 @@ static void pushc(char c) {
     lex_process->function->push_char(lex_process, c);
 }
 
+/*
+ * Function asserts that next character is the same as input
+ * character.
+ * */
+static char assert_next_char(char c) {
+    char next_c = nextc();
+    assert(c == next_c);
+    return next_c;
+}
+
 // Returns position in file of current lex process
 static struct pos lex_file_position() {
     return lex_process->pos;
@@ -472,6 +482,52 @@ struct token* token_make_newline() {
 }
 
 /*
+ * Function returns a binary char based on input char.
+ * */
+char lex_get_escaped_char(char c) {
+    char co = 0;
+    switch(c) {
+        case 'n': {
+            co = '\n';
+            break;
+        }
+        case '\\': {
+            co = '\\';
+            break;
+        }
+        case 't': {
+            co = '\t';
+            break;
+        }
+        case '\'': {
+            co = '\'';
+            break;
+        }
+    }
+    return co;
+}
+
+/*
+ * Function constructs a token for quotes and special quote characters
+ * such as '\n'.
+ * */
+struct token* token_make_quote() {
+    assert_next_char('\''); // Pop of character from stream and check if it is a quote
+    char c = nextc(); // Get next character of input stream
+    if(c == '\\') { // If character equals '
+        c = nextc();
+        c = lex_get_escaped_char(c); // Get char in between quotes
+    }
+    if(nextc() != '\'') {
+        compiler_error(lex_process->compiler, "You did not close quote with a '");
+    }
+
+    // Construct and return new token of type number, with a character value.
+    // Characters are defined as numbers because of the ascii value rather than the letter.
+    return token_create(&(struct token){.type = TOKEN_TYPE_NUMBER, .cval = c});
+}
+
+/*
  * Function creates and return token
  * */
 struct token *read_next_token() {
@@ -493,6 +549,10 @@ struct token *read_next_token() {
         }
         case '"': {
             token = token_make_string('"', '"');
+            break;
+        }
+        case '\'': {
+            token = token_make_quote();
             break;
         }
         case ' ': { // Ignore spaces

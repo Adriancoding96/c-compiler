@@ -1,6 +1,7 @@
 #include "compiler.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include "helpers/vector.h"
@@ -45,6 +46,16 @@ static char nextc() {
 // Uses function pointer to call push_char function
 static void pushc(char c) {
     lex_process->function->push_char(lex_process, c);
+}
+
+/*
+ * Function asserts that next character is the same as input
+ * character.
+ * */
+static char assert_next_char(char c) {
+    char next_c = nextc();
+    assert(c == next_c);
+    return next_c;
 }
 
 // Returns position in file of current lex process
@@ -92,6 +103,10 @@ const char* read_number_str() {
 unsigned long long read_number() {
     const char* s = read_number_str();
     return atoll(s); // Converts string to long
+}
+
+struct token *token_make_number_for_value(unsigned long number) { // TODO not sure if i have missed something regarding this function
+    return token_create(&(struct token){.type = TOKEN_TYPE_NUMBER, .llnum = number});
 }
 
 
@@ -472,6 +487,112 @@ struct token* token_make_newline() {
 }
 
 /*
+ * Function returns a binary char based on input char.
+ * */
+char lex_get_escaped_char(char c) {
+    char co = 0;
+    switch(c) {
+        case 'n': {
+            co = '\n';
+            break;
+        }
+        case '\\': {
+            co = '\\';
+            break;
+        }
+        case 't': {
+            co = '\t';
+            break;
+        }
+        case '\'': {
+            co = '\'';
+            break;
+        }
+    }
+    return co;
+}
+
+/*
+ * Function pops of the last token in the lex_process vector.
+ * */
+void lexer_pop_token() {
+    vector_pop(lex_process->token_vec);
+}
+
+/*
+ * Function return true if valid hex character, false if not.
+ * */
+bool is_hex_char(char c) {
+    c = tolower(c);
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+}
+
+/*
+ * Function creates a new buffer containing hex characters
+ * and returns start of buffer as a char pointer.
+ * */
+const char* read_hex_number_str() {
+    struct buffer* buf = buffer_create(); // Create new buffer
+    char c = peekc(); // Peek at next char in input stream
+    LEX_GETC_IF(buf, c, is_hex_char(c)); // Check if trailing chars are valid hex characters, if true adds to buffer
+    buffer_write(buf, 0x00);
+    return buffer_ptr(buf);
+}
+
+/*
+ * Function constructs and returns a number token containing
+ * hexadecimal value.
+ * */
+struct token* token_make_special_number_hexadecimal() {
+    nextc(); // Skips the x, we already now its a hexadecimal.
+
+    unsigned long number = 0;
+    const char* number_str = read_hex_number_str();
+    // Construct number that machine can understand from hexadecimal
+    number = strtol(number_str, 0, 16);
+    return token_make_number_for_value(number);
+}
+
+/*
+ * Function creates a number token for special numbers
+ * such as hexadecimals. Lexer will have constructed a number token if it
+ * sees a 0, so we need to pop it of and check the following character if it 
+ * contains a x it will be a hex number and need to handeled diferently.
+ * */
+struct token* token_make_special_number() {
+    struct token* token = NULL; // Initialise token
+    struct token* last_token = lexer_last_token();
+
+    lexer_pop_token();
+
+    char c = peekc(); // Peek at next character.
+    if(c == 'x') { // This tells us its a hexadecimal number if its a number followed up by a x
+        token = token_make_special_number_hexadecimal(); 
+    }
+    return token;
+}
+
+/*
+ * Function constructs a token for quotes and special quote characters
+ * such as '\n'.
+ * */
+struct token* token_make_quote() {
+    assert_next_char('\''); // Pop of character from stream and check if it is a quote
+    char c = nextc(); // Get next character of input stream
+    if(c == '\\') { // If character equals '
+        c = nextc();
+        c = lex_get_escaped_char(c); // Get char in between quotes
+    }
+    if(nextc() != '\'') {
+        compiler_error(lex_process->compiler, "You did not close quote with a '");
+    }
+
+    // Construct and return new token of type number, with a character value.
+    // Characters are defined as numbers because of the ascii value rather than the letter.
+    return token_create(&(struct token){.type = TOKEN_TYPE_NUMBER, .cval = c});
+}
+
+/*
  * Function creates and return token
  * */
 struct token *read_next_token() {
@@ -491,8 +612,16 @@ struct token *read_next_token() {
             token_make_symbol();
             break;
         }
+        case 'x': {
+            token_make_special_number();
+            break;
+        }
         case '"': {
             token = token_make_string('"', '"');
+            break;
+        }
+        case '\'': {
+            token = token_make_quote();
             break;
         }
         case ' ': { // Ignore spaces

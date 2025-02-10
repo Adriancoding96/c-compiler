@@ -90,6 +90,11 @@ static struct token* handle_whitespace() {
     return read_next_token();
 }
 
+
+/*
+ * Function reads strings from the input stream, and validates it only
+ * contains ascii values related to numbers.
+ * */
 const char* read_number_str() {
     const char* num = NULL;
     struct buffer* buffer = buffer_create();

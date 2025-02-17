@@ -6,6 +6,7 @@
 struct compile_process *compile_process_create(const char *filename,
                                                const char *filename_out,
                                                int flags) {
+  
     // Opens file
     FILE *file = fopen(filename, "r");
 
@@ -55,7 +56,9 @@ char compile_process_next_char(struct lex_process* lex_process) {
 
 
 /*
- * Method to peek at the next char in the filestream
+ * Method to peek at the next char in the filestream.
+ * Meaning we get the char from the stream but we return in before returning the
+ * character to the caller.
  * */
 char compile_process_peek_char(struct lex_process* lex_process) {
     struct compile_process* compiler = lex_process-> compiler;

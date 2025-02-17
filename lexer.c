@@ -1,5 +1,6 @@
 #include "compiler.h"
 #include <assert.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,8 +23,10 @@
 static struct lex_process* lex_process;
 static struct token tmp_token;
 static struct token* read_next_token();
+struct token* token_make_special_number();
+struct token* token_make_special_number_binary();
 
-// Uses function pointer to call peek_char function
+    // Uses function pointer to call peek_char function
 static char peekc() {
     return lex_process->function->peek_char(lex_process);
 }
@@ -558,6 +561,8 @@ struct token* token_make_special_number_hexadecimal() {
     return token_make_number_for_value(number);
 }
 
+
+
 /*
  * Function creates a number token for special numbers
  * such as hexadecimals. Lexer will have constructed a number token if it
@@ -567,14 +572,47 @@ struct token* token_make_special_number_hexadecimal() {
 struct token* token_make_special_number() {
     struct token* token = NULL; // Initialise token
     struct token* last_token = lexer_last_token();
+    if(!last_token || !(last_token->type == TOKEN_TYPE_NUMBER && last_token->llnum == 0)) { // If last token is not a number it cant be a special number
+                                                                                            // there for it is a identifier or keyword.
+        return token_make_identifier_or_keyword();
+    }
 
     lexer_pop_token();
 
     char c = peekc(); // Peek at next character.
     if(c == 'x') { // This tells us its a hexadecimal number if its a number followed up by a x
         token = token_make_special_number_hexadecimal(); 
+    } else if (c == 'b') { // this tells us it is a binary number if the first number is followed up by a b
+        token = token_make_special_number_binary();
     }
     return token;
+}
+
+/*
+ * Function validates that each character in a string is either
+ * '0' or '1'.
+ * */
+void lexer_validate_binary_string(const char* str) {
+     size_t n = strlen(str);
+     for(int i = 0; i < n; i++) {
+         if(str[i] != '0' && str[i] != '1') {
+             compiler_error(lex_process->compiler, "Binary string is not valid\n");
+         }
+     }
+}
+
+/*
+ * Function creates and returns a number token containing
+ * a binary number.
+ * */
+struct token* token_make_special_number_binary() {
+    nextc(); // Skip b in binary sequence
+    unsigned long number = 0;
+    const char* number_str = read_number_str();
+    lexer_validate_binary_string(number_str); // Validate string only contains binary
+
+    number = strtol(number_str, 0, 2); // Convert string to long
+    return token_make_special_number();
 }
 
 /*
@@ -615,6 +653,10 @@ struct token *read_next_token() {
         }
         SYMBOL_CASE: {
             token_make_symbol();
+            break;
+        }
+        case 'b': {
+            
             break;
         }
         case 'x': {

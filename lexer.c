@@ -25,8 +25,9 @@ static struct token tmp_token;
 static struct token* read_next_token();
 struct token* token_make_special_number();
 struct token* token_make_special_number_binary();
+bool lex_is_in_expression();
 
-    // Uses function pointer to call peek_char function
+// Uses function pointer to call peek_char function
 static char peekc() {
     return lex_process->function->peek_char(lex_process);
 }
@@ -36,7 +37,11 @@ static char peekc() {
  * */
 static char nextc() {
     char c = lex_process->function->next_char(lex_process); // Gets next char from input steam.
-    //printf("DEBUG nextc, current char = %i\n", c);
+ 
+    if(lex_is_in_expression()) { // Check if lexer is currently inisde of paranthasees
+                                 // if true write the caracher to the paranthases buffer.
+        buffer_write(lex_process->parantheses_buffer, c);
+    }
     lex_process->pos.col += 1; // Increments column state
     if(c == '\n') { // If char is new line character increments line state, and sets col state to 1
         lex_process->pos.line += 1;
@@ -72,6 +77,11 @@ static struct pos lex_file_position() {
 struct token* token_create(struct token* _token) {
     memcpy(&tmp_token, _token, sizeof(struct token));
     tmp_token.pos = lex_file_position();
+    
+    if(lex_is_in_expression()) { // Check if lexer is inside of paranthasees.
+        tmp_token.between_brackets = buffer_ptr(lex_process->parantheses_buffer); // Sets pointer of token to
+                                                                                  // paranthasees buffer pointer
+    }
     return &tmp_token;
 }
 
